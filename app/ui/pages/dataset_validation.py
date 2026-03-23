@@ -29,17 +29,13 @@ def render() -> None:
     else:
         st.success("Keine Warnings")
 
-    checks = {
-        "Pflichtspalten": not any("missing required columns" in x for x in report.errors),
-        "Datentypprüfung": not any("not numeric" in x for x in report.errors),
-        "scenario_id Konsistenz": not any("unknown scenario_id" in x for x in report.errors),
-        "tunnel_id Konsistenz": not any("unknown tunnel_id" in x for x in report.errors),
-        "timestamp Konsistenz": not any("timestamp mismatch" in x for x in report.errors),
-        "Duplikate": not any("duplicate" in x for x in report.errors),
-    }
-
     st.subheader("Passed Checks")
-    for label, ok in checks.items():
-        (st.success if ok else st.info)(f"{label}: {'PASS' if ok else 'FAIL'}")
+    passed = [
+        "Pflichtspalten" if not any("missing required columns" in x for x in report.errors) else None,
+        "Datentyp-Checks" if not any("not numeric" in x for x in report.errors) else None,
+        "scenario_id/tunnel_id/timestamp-Konsistenz" if not any("unknown" in x or "mismatch" in x for x in report.errors) else None,
+    ]
+    for p in [x for x in passed if x]:
+        st.success(p)
 
     st.json(report.to_dict())

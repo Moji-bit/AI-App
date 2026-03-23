@@ -3,7 +3,7 @@ from __future__ import annotations
 import plotly.express as px
 import streamlit as st
 
-from app.services.evaluator import compute_auc_metrics, compute_operational_metrics, confusion_matrix_df, evaluate_predictions
+from app.services.evaluator import compute_operational_metrics, confusion_matrix_df, evaluate_predictions
 
 
 def render() -> None:
@@ -18,13 +18,10 @@ def render() -> None:
         return
 
     metrics = evaluate_predictions(preds["target_event_type"], preds["predicted_event_type"])
-    auc = compute_auc_metrics(preds)
     ops = compute_operational_metrics(preds)
 
     st.subheader("Klassische Metriken")
     st.json(metrics)
-    st.subheader("ROC/PR")
-    st.json(auc)
     st.subheader("Operational Metrics")
     st.json(ops)
 

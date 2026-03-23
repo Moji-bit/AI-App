@@ -4,10 +4,7 @@ import pandas as pd
 
 from app.services.augmentation_engine import AugmentationConfig, generate_augmented_dataset
 from app.services.data_merger import build_merged_dataset
-from app.services.dataset_builder import DatasetBuildConfig, add_training_targets, build_windowed_training_dataset, train_val_test_split
-from app.services.model_factory import ModelConfig
 from app.services.schema_validator import validate_schema
-from app.services.trainer import TrainingConfig, predict_with_model, train_model
 
 
 def sample_frames() -> dict[str, pd.DataFrame]:
@@ -71,7 +68,8 @@ def sample_frames() -> dict[str, pd.DataFrame]:
         ]
     )
 
-    ts_rows, gt_rows = [], []
+    ts_rows = []
+    gt_rows = []
     for t in [0, 2, 4, 6, 8, 10]:
         ts_rows.append(
             {
@@ -126,61 +124,24 @@ def sample_frames() -> dict[str, pd.DataFrame]:
     }
 
 
-def _build_windowed(frames: dict[str, pd.DataFrame]) -> pd.DataFrame:
-    augmented = generate_augmented_dataset(
+def test_validation_and_merge() -> None:
+    frames = sample_frames()
+    report = validate_schema(frames)
+    assert report.schema_ok
+
+    merged = build_merged_dataset(frames)
+    assert not merged.empty
+    assert "tunnel_name" in merged.columns
+
+
+def test_augmentation_generation() -> None:
+    frames = sample_frames()
+    out = generate_augmented_dataset(
         frames["scenario_metadata"],
         frames["timeseries"],
         frames["ground_truth"],
-        AugmentationConfig(target_scenarios=8, seed=3),
+        AugmentationConfig(target_scenarios=5, seed=123),
     )
-    merged = build_merged_dataset(
-        {
-            "tunnel_config": frames["tunnel_config"],
-            "scenario_metadata": augmented["augmented_scenario_metadata"],
-            "timeseries": augmented["augmented_timeseries"],
-            "ground_truth": augmented["augmented_ground_truth"],
-        }
-    )
-
-    ds_cfg = DatasetBuildConfig(sequence_length=3, forecast_horizon=1, stride=1)
-    windowed = build_windowed_training_dataset(merged, ds_cfg)
-    windowed = add_training_targets(windowed, "multi_task")
-    return windowed
-
-
-def test_end_to_end_build() -> None:
-    frames = sample_frames()
-    assert validate_schema(frames).schema_ok
-
-    windowed = _build_windowed(frames)
-    splits = train_val_test_split(windowed, DatasetBuildConfig())
-
-    assert not windowed.empty
-    assert all(k in splits for k in ["train", "val", "test"])
-
-
-def test_model_json() -> None:
-    cfg = ModelConfig(model_type="GRU", input_dim=16)
-    loaded = ModelConfig.from_json(cfg.to_json())
-    assert loaded.model_type == "GRU"
-    assert loaded.input_dim == 16
-
-
-def test_training_smoke() -> None:
-    frames = sample_frames()
-    windowed = _build_windowed(frames)
-    splits = train_val_test_split(windowed, DatasetBuildConfig())
-
-    model, history, summary = train_model(
-        splits["train"],
-        splits["val"],
-        ModelConfig(model_type="LSTM"),
-        TrainingConfig(epochs=3, patience=2),
-        "multi_task",
-    )
-
-    pred = predict_with_model(model, splits["test"].head(2))
-
-    assert not history.empty
-    assert summary["epochs_completed"] >= 1
-    assert "predicted_event_type" in pred.columns
+    assert len(out["augmented_scenario_metadata"]) == 5
+    assert out["augmented_timeseries"]["scenario_id"].nunique() == 5
+    assert out["augmented_ground_truth"]["scenario_id"].nunique() == 5

@@ -10,15 +10,14 @@ def render() -> None:
     model = st.session_state.get("trained_model")
     windowed = st.session_state.get("windowed")
 
-    if model is None or windowed is None or windowed.empty:
+    if model is None or windowed is None:
         st.warning("Bitte zuerst Dataset bauen und Modell trainieren.")
         return
 
     mode = st.selectbox("Prediction Mode", ["single scenario", "single window", "batch"])
 
     if mode == "single scenario":
-        ids = sorted(windowed["scenario_id"].astype(str).unique())
-        sid = st.selectbox("scenario_id", ids)
+        sid = st.selectbox("scenario_id", sorted(windowed["scenario_id"].astype(str).unique()))
         feat = windowed[windowed["scenario_id"].astype(str) == sid].head(1)
     elif mode == "single window":
         idx = st.number_input("window row index", 0, max(0, len(windowed) - 1), 0)
@@ -28,11 +27,7 @@ def render() -> None:
         feat = windowed.head(int(size))
 
     if st.button("Run Inference", type="primary"):
-        try:
-            pred = predict_with_model(model, feat)
-        except Exception as exc:
-            st.error(f"Inference fehlgeschlagen: {exc}")
-            return
+        pred = predict_with_model(model, feat)
         out = feat.reset_index(drop=True).copy()
         out = out.join(pred)
         st.session_state["predictions"] = out

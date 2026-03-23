@@ -46,15 +46,3 @@ def config_from_preset(preset: str) -> ModelConfig:
         d.update(MODEL_PRESETS[preset])
         return ModelConfig(**d)
     return base
-
-
-def available_model_types() -> list[str]:
-    return [
-        "LSTM",
-        "GRU",
-        "1D CNN",
-        "Transformer Encoder",
-        "Multi-Task Transformer",
-        "Hybrid CNN + LSTM",
-        "Hybrid CNN + Transformer",
-    ]

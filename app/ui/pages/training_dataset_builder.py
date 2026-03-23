@@ -54,7 +54,6 @@ def render() -> None:
         st.session_state["merged"] = merged
         st.session_state["windowed"] = windowed
         st.session_state["splits"] = splits
-        st.session_state["label_mode"] = label_mode
         st.success("Training Dataset erstellt.")
 
     windowed = st.session_state.get("windowed")
