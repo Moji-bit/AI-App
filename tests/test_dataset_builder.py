@@ -4,6 +4,7 @@ import pandas as pd
 
 from app.services.augmentation_engine import AugmentationConfig, generate_augmented_dataset
 from app.services.data_merger import build_merged_dataset
+from app.services.dataset_builder import DatasetBuildConfig, add_training_targets, build_windowed_training_dataset
 from app.services.schema_validator import validate_schema
 
 
@@ -145,3 +146,25 @@ def test_augmentation_generation() -> None:
     assert len(out["augmented_scenario_metadata"]) == 5
     assert out["augmented_timeseries"]["scenario_id"].nunique() == 5
     assert out["augmented_ground_truth"]["scenario_id"].nunique() == 5
+
+
+def test_windowed_builder_empty_still_has_target_columns() -> None:
+    merged = pd.DataFrame(
+        [
+            {
+                "scenario_id": "SCN_X",
+                "timestamp_s": 0,
+                "label_event_active": 0,
+                "label_event_type": "normal",
+                "label_risk_level": "low",
+            }
+        ]
+    )
+    cfg = DatasetBuildConfig(sequence_length=30, forecast_horizon=5, stride=5)
+
+    windowed = build_windowed_training_dataset(merged, cfg)
+    with_target = add_training_targets(windowed, "event_classification")
+
+    assert "target_event_type" in with_target.columns
+    assert "target" in with_target.columns
+    assert with_target.empty
