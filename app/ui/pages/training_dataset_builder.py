@@ -15,7 +15,7 @@ def render() -> None:
         st.warning("Bitte zuerst Daten importieren.")
         return
 
-    use_augmented = st.checkbox("Augmented Daten verwenden", value=bool(augmented))
+    use_augmented = st.checkbox("Augmented Daten verwenden", value=bool(augmented), key="train_ds_use_augmented")
     src = frames.copy()
     if use_augmented and augmented:
         src = {
@@ -25,18 +25,20 @@ def render() -> None:
             "ground_truth": augmented["augmented_ground_truth"],
         }
 
-    sequence_length = st.number_input("sequence_length", 3, 300, 30)
-    forecast_horizon = st.number_input("forecast_horizon", 1, 300, 5)
-    stride = st.number_input("stride", 1, 100, 5)
-    label_mode = st.selectbox("Label-Modus", ["event_classification", "risk_classification", "time_to_event_regression", "multi_task"])
+    print("Key for this widget: train_ds_sequence_length")
+    sequence_length = st.number_input("sequence_length", 3, 300, 30, key="train_ds_sequence_length")
+    print("Key for this widget: train_ds_forecast_horizon")
+    forecast_horizon = st.number_input("forecast_horizon", 1, 300, 5, key="train_ds_forecast_horizon")
+    stride = st.number_input("stride", 1, 100, 5, key="train_ds_stride")
+    label_mode = st.selectbox("Label-Modus", ["event_classification", "risk_classification", "time_to_event_regression", "multi_task"], key="train_ds_label_mode")
 
     split_cols = st.columns(3)
-    train_ratio = split_cols[0].slider("train", 0.1, 0.9, 0.7, 0.05)
-    val_ratio = split_cols[1].slider("val", 0.05, 0.4, 0.15, 0.05)
+    train_ratio = split_cols[0].slider("train", 0.1, 0.9, 0.7, 0.05, key="train_ds_train_ratio")
+    val_ratio = split_cols[1].slider("val", 0.05, 0.4, 0.15, 0.05, key="train_ds_val_ratio")
     test_ratio = 1.0 - train_ratio - val_ratio
     split_cols[2].write(f"test: {test_ratio:.2f}")
 
-    if st.button("Build Training Dataset", type="primary"):
+    if st.button("Build Training Dataset", type="primary", key="train_ds_build"):
         merged = build_merged_dataset(src)
         cfg = DatasetBuildConfig(
             sequence_length=int(sequence_length),
@@ -47,9 +49,13 @@ def render() -> None:
             val_ratio=float(val_ratio),
             test_ratio=float(test_ratio),
         )
-        windowed = build_windowed_training_dataset(merged, cfg)
-        windowed = add_training_targets(windowed, label_mode)
-        splits = train_val_test_split(windowed, cfg)
+        try:
+            windowed = build_windowed_training_dataset(merged, cfg)
+            windowed = add_training_targets(windowed, label_mode)
+            splits = train_val_test_split(windowed, cfg)
+        except ValueError as exc:
+            st.error(f"Training Dataset konnte nicht erstellt werden: {exc}")
+            return
 
         st.session_state["merged"] = merged
         st.session_state["windowed"] = windowed
@@ -65,8 +71,8 @@ def render() -> None:
     if splits:
         st.write({k: len(v) for k, v in splits.items()})
 
-    out_dir = st.text_input("Export-Verzeichnis", "exports")
-    if st.button("Export Training Files") and st.session_state.get("merged") is not None:
+    out_dir = st.text_input("Export-Verzeichnis", "exports", key="train_ds_export_dir")
+    if st.button("Export Training Files", key="train_ds_export") and st.session_state.get("merged") is not None:
         if augmented:
             files = export_augmented_files(
                 out_dir,

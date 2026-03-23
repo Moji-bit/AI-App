@@ -35,6 +35,17 @@ NUMERIC_FEATURES = [
     "jet_fan_power_pct",
 ]
 
+BASE_WINDOWED_COLUMNS = [
+    "scenario_id",
+    "window_start_s",
+    "window_end_s",
+    "sequence_length",
+    "forecast_horizon",
+    "target_event_type",
+    "target_risk_level",
+    "target_time_to_event_s",
+]
+
 
 def _time_to_event(group: pd.DataFrame) -> pd.Series:
     active = pd.to_numeric(group.get("label_event_active", 0), errors="coerce").fillna(0).astype(int)
@@ -74,12 +85,24 @@ def build_windowed_training_dataset(merged: pd.DataFrame, config: DatasetBuildCo
             row.update(features)
             rows.append(row)
 
-    windowed = pd.DataFrame(rows)
+    windowed = pd.DataFrame(rows, columns=BASE_WINDOWED_COLUMNS)
     return windowed
 
 
 def add_training_targets(windowed: pd.DataFrame, mode: LabelMode) -> pd.DataFrame:
     out = windowed.copy()
+    required = {
+        "event_classification": ["target_event_type"],
+        "risk_classification": ["target_risk_level"],
+        "time_to_event_regression": ["target_time_to_event_s"],
+        "multi_task": ["target_event_type", "target_risk_level", "target_time_to_event_s"],
+    }[mode]
+    missing = [c for c in required if c not in out.columns]
+    if missing:
+        raise ValueError(
+            f"Windowed dataset is missing required columns for '{mode}': {', '.join(missing)}"
+        )
+
     if mode == "event_classification":
         out["target"] = out["target_event_type"]
     elif mode == "risk_classification":

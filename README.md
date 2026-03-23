@@ -26,12 +26,14 @@ Diese Implementierung ergänzt die App um einen vollständigen **Dataset Builder
 
 ## Starten
 
+Die Hauptanwendung startet über `app/ui/app.py` (alle Tabs):
+
 ```bash
 pip install -r requirements.txt
-python run_dataset_builder.py
+streamlit run app/ui/app.py
 ```
 
-oder direkt:
+Optional kannst du nur den Dataset-Builder einzeln starten:
 
 ```bash
 streamlit run app/ui/pages/dataset_builder.py
