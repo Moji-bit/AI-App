@@ -20,10 +20,10 @@ def render() -> None:
         sid = st.selectbox("scenario_id", sorted(windowed["scenario_id"].astype(str).unique()))
         feat = windowed[windowed["scenario_id"].astype(str) == sid].head(1)
     elif mode == "single window":
-        idx = st.number_input("window row index", 0, max(0, len(windowed) - 1), 0)
+        idx = st.number_input("window row index", 0, max(0, len(windowed) - 1), 0, key="predict_window_row_index")
         feat = windowed.iloc[[int(idx)]]
     else:
-        size = st.number_input("batch size", 1, len(windowed), min(64, len(windowed)))
+        size = st.number_input("batch size", 1, len(windowed), min(64, len(windowed)), key="predict_batch_size")
         feat = windowed.head(int(size))
 
     if st.button("Run Inference", type="primary"):

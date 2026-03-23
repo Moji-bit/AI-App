@@ -24,15 +24,15 @@ def render() -> None:
 
     c1, c2, c3 = st.columns(3)
     with c1:
-        target_scenarios = st.number_input("target scenario count", 1, 100000, cfg.target_scenarios, 100)
+        target_scenarios = st.number_input("target scenario count", 1, 100000, cfg.target_scenarios, 100, key="data_aug_target_scenarios")
         augmentation_strength = st.slider("augmentation strength", 0.0, 1.0, cfg.augmentation_strength, 0.01)
         noise_level = st.slider("noise level", 0.0, 0.4, cfg.noise_level, 0.005)
     with c2:
-        event_shift_range_s = st.number_input("event shift range", 0, 300, cfg.event_shift_range_s, 1)
+        event_shift_range_s = st.number_input("event shift range", 0, 300, cfg.event_shift_range_s, 1, key="data_aug_event_shift_range")
         missing_rate = st.slider("missing rate", 0.0, 0.2, cfg.missing_rate, 0.001)
         outlier_rate = st.slider("outlier rate", 0.0, 0.05, cfg.outlier_rate, 0.001)
     with c3:
-        seed = st.number_input("random seed", 0, 10_000_000, cfg.seed, 1)
+        seed = st.number_input("random seed", 0, 10_000_000, cfg.seed, 1, key="data_aug_seed")
         allowed_weather = st.multiselect("allowed weather variation", ["clear", "rain", "snow", "fog", "storm"], cfg.allowed_weather)
 
     class_balance_text = st.text_area("class balance target (JSON)", json.dumps(cfg.class_balance_targets, indent=2), height=160)

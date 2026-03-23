@@ -74,15 +74,15 @@ if all([tunnel_file, metadata_file, timeseries_file, ground_truth_file]):
 
         c1, c2, c3 = st.columns(3)
         with c1:
-            target_scenarios = st.number_input("Anzahl Ziel-Szenarien", min_value=1, value=cfg.target_scenarios, step=100)
+            target_scenarios = st.number_input("Anzahl Ziel-Szenarien", min_value=1, value=cfg.target_scenarios, step=100, key="dataset_builder_target_scenarios")
             augmentation_strength = st.slider("Augmentationsstärke", 0.0, 1.0, float(cfg.augmentation_strength), 0.01)
             noise_level = st.slider("Noise-Level", 0.0, 0.5, float(cfg.noise_level), 0.005)
         with c2:
-            event_shift_range_s = st.number_input("Event-Shift-Range (s)", min_value=0, value=cfg.event_shift_range_s, step=1)
+            event_shift_range_s = st.number_input("Event-Shift-Range (s)", min_value=0, value=cfg.event_shift_range_s, step=1, key="dataset_builder_event_shift_range_s")
             missing_rate = st.slider("Missing-Rate", 0.0, 0.2, float(cfg.missing_rate), 0.001)
             outlier_rate = st.slider("Outlier-Rate", 0.0, 0.05, float(cfg.outlier_rate), 0.001)
         with c3:
-            seed = st.number_input("Random Seed", min_value=0, value=cfg.seed, step=1)
+            seed = st.number_input("Random Seed", min_value=0, value=cfg.seed, step=1, key="dataset_builder_seed")
             allowed_weather = st.multiselect(
                 "Erlaubte Wettervariationen",
                 options=["clear", "rain", "snow", "fog", "storm"],
@@ -153,8 +153,8 @@ if all([tunnel_file, metadata_file, timeseries_file, ground_truth_file]):
 
             build_windows = st.checkbox("Windowed Sequences für Training erzeugen", value=False)
             if build_windows:
-                window_size = st.number_input("Window Size", min_value=3, value=30, step=1)
-                stride = st.number_input("Stride", min_value=1, value=5, step=1)
+                window_size = st.number_input("Window Size", min_value=3, value=30, step=1, key="dataset_builder_window_size")
+                stride = st.number_input("Stride", min_value=1, value=5, step=1, key="dataset_builder_stride")
                 windowed = create_windowed_sequences(merged, window_size=int(window_size), stride=int(stride))
                 st.dataframe(windowed.head(100), use_container_width=True)
                 st.session_state["windowed"] = windowed
