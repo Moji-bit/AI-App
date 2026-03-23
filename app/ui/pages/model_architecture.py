@@ -8,27 +8,27 @@ from app.services.model_factory import MODEL_PRESETS, ModelConfig, config_from_p
 def render() -> None:
     st.header("Model Architecture")
 
-    preset = st.selectbox("Preset", list(MODEL_PRESETS.keys()))
+    preset = st.selectbox("Preset", list(MODEL_PRESETS.keys()), key="model_arch_preset")
     cfg = config_from_preset(preset)
 
     c1, c2, c3 = st.columns(3)
     with c1:
-        model_type = st.selectbox("model", ["LSTM", "GRU", "1D CNN", "Transformer Encoder", "Multi-Task Transformer", "Hybrid CNN + LSTM", "Hybrid CNN + Transformer"], index=0)
-        input_dim = st.number_input("input_dim", 1, 4096, cfg.input_dim)
-        hidden_dim = st.number_input("hidden_dim", 4, 2048, cfg.hidden_dim)
-        d_model = st.number_input("d_model", 8, 2048, cfg.d_model)
+        model_type = st.selectbox("model", ["LSTM", "GRU", "1D CNN", "Transformer Encoder", "Multi-Task Transformer", "Hybrid CNN + LSTM", "Hybrid CNN + Transformer"], index=0, key="model_arch_model_type")
+        input_dim = st.number_input("input_dim", 1, 4096, cfg.input_dim, key="model_arch_input_dim")
+        hidden_dim = st.number_input("hidden_dim", 4, 2048, cfg.hidden_dim, key="model_arch_hidden_dim")
+        d_model = st.number_input("d_model", 8, 2048, cfg.d_model, key="model_arch_d_model")
     with c2:
-        num_layers = st.number_input("num_layers", 1, 24, cfg.num_layers)
-        num_heads = st.number_input("num_heads", 1, 16, cfg.num_heads)
-        dropout = st.slider("dropout", 0.0, 0.8, cfg.dropout, 0.01)
+        num_layers = st.number_input("num_layers", 1, 24, cfg.num_layers, key="model_arch_num_layers")
+        num_heads = st.number_input("num_heads", 1, 16, cfg.num_heads, key="model_arch_num_heads")
+        dropout = st.slider("dropout", 0.0, 0.8, cfg.dropout, 0.01, key="model_arch_dropout")
     with c3:
-        sequence_length = st.number_input("sequence_length", 3, 300, cfg.sequence_length)
-        forecast_horizon = st.number_input("forecast_horizon", 1, 300, cfg.forecast_horizon)
-        output_heads = st.multiselect("output heads", ["event", "risk", "tte"], default=cfg.output_heads or ["event"])
+        sequence_length = st.number_input("sequence_length", 3, 300, cfg.sequence_length, key="model_arch_sequence_length")
+        forecast_horizon = st.number_input("forecast_horizon", 1, 300, cfg.forecast_horizon, key="model_arch_forecast_horizon")
+        output_heads = st.multiselect("output heads", ["event", "risk", "tte"], default=cfg.output_heads or ["event"], key="model_arch_output_heads")
 
-    loss_json = st.text_area("loss weights (JSON)", '{"event":1.0,"risk":0.5,"tte":0.2}')
+    loss_json = st.text_area("loss weights (JSON)", '{"event":1.0,"risk":0.5,"tte":0.2}', key="model_arch_loss_weights")
 
-    if st.button("Save Architecture", type="primary"):
+    if st.button("Save Architecture", type="primary", key="model_arch_save"):
         import json
 
         model_cfg = ModelConfig(
@@ -49,8 +49,8 @@ def render() -> None:
 
     current = st.session_state.get("model_config")
     if current:
-        st.download_button("Export JSON", data=current.to_json(), file_name="model_config.json")
-        imported = st.text_area("Import JSON", value=current.to_json(), height=220)
-        if st.button("Load JSON"):
+        st.download_button("Export JSON", data=current.to_json(), file_name="model_config.json", key="model_arch_export")
+        imported = st.text_area("Import JSON", value=current.to_json(), height=220, key="model_arch_import")
+        if st.button("Load JSON", key="model_arch_load"):
             st.session_state["model_config"] = ModelConfig.from_json(imported)
             st.success("JSON geladen.")

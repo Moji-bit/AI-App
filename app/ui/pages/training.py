@@ -24,17 +24,17 @@ def render() -> None:
 
     c1, c2, c3 = st.columns(3)
     with c1:
-        epochs = st.number_input("epochs", 1, 500, 40)
-        batch_size = st.number_input("batch_size", 1, 4096, 128)
-        learning_rate = st.number_input("learning_rate", 0.00001, 1.0, 0.001, format="%.5f")
+        epochs = st.number_input("epochs", 1, 500, 40, key="training_epochs")
+        batch_size = st.number_input("batch_size", 1, 4096, 128, key="training_batch_size")
+        learning_rate = st.number_input("learning_rate", 0.00001, 1.0, 0.001, format="%.5f", key="training_learning_rate")
     with c2:
         optimizer = st.selectbox("optimizer", ["adam", "adamw", "sgd"])
         scheduler = st.selectbox("scheduler", ["none", "cosine", "step"])
         early_stopping = st.checkbox("early stopping", value=True)
     with c3:
-        patience = st.number_input("patience", 1, 100, 8)
+        patience = st.number_input("patience", 1, 100, 8, key="training_patience")
         use_cuda = st.checkbox("use_cuda", value=False)
-        random_seed = st.number_input("random_seed", 0, 10_000_000, 42)
+        random_seed = st.number_input("random_seed", 0, 10_000_000, 42, key="training_random_seed")
 
     class_weights = st.text_area("class weights (JSON)", value='{"normal":1.0,"accident":2.0,"fire":3.0}')
     checkpoint_saving = st.checkbox("checkpoint saving", value=True)
