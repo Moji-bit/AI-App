@@ -22,9 +22,7 @@ def render() -> None:
         num_heads = st.number_input("num_heads", 1, 16, cfg.num_heads, key="model_arch_num_heads")
         dropout = st.slider("dropout", 0.0, 0.8, cfg.dropout, 0.01, key="model_arch_dropout")
     with c3:
-        print("Key for this widget: model_arch_sequence_length")
         sequence_length = st.number_input("sequence_length", 3, 300, cfg.sequence_length, key="model_arch_sequence_length")
-        print("Key for this widget: model_arch_forecast_horizon")
         forecast_horizon = st.number_input("forecast_horizon", 1, 300, cfg.forecast_horizon, key="model_arch_forecast_horizon")
         output_heads = st.multiselect("output heads", ["event", "risk", "tte"], default=cfg.output_heads or ["event"], key="model_arch_output_heads")
 

@@ -25,9 +25,7 @@ def render() -> None:
             "ground_truth": augmented["augmented_ground_truth"],
         }
 
-    print("Key for this widget: train_ds_sequence_length")
     sequence_length = st.number_input("sequence_length", 3, 300, 30, key="train_ds_sequence_length")
-    print("Key for this widget: train_ds_forecast_horizon")
     forecast_horizon = st.number_input("forecast_horizon", 1, 300, 5, key="train_ds_forecast_horizon")
     stride = st.number_input("stride", 1, 100, 5, key="train_ds_stride")
     label_mode = st.selectbox("Label-Modus", ["event_classification", "risk_classification", "time_to_event_regression", "multi_task"], key="train_ds_label_mode")
