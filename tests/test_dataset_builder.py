@@ -4,8 +4,6 @@ import pandas as pd
 
 from app.services.augmentation_engine import AugmentationConfig, generate_augmented_dataset
 from app.services.data_merger import build_merged_dataset
-from app.services.dataset_builder import DatasetBuildConfig, add_training_targets, build_windowed_training_dataset, train_val_test_split
-from app.services.model_factory import ModelConfig
 from app.services.schema_validator import validate_schema
 
 
@@ -70,7 +68,8 @@ def sample_frames() -> dict[str, pd.DataFrame]:
         ]
     )
 
-    ts_rows, gt_rows = [], []
+    ts_rows = []
+    gt_rows = []
     for t in [0, 2, 4, 6, 8, 10]:
         ts_rows.append(
             {
@@ -125,36 +124,24 @@ def sample_frames() -> dict[str, pd.DataFrame]:
     }
 
 
-def test_end_to_end_build() -> None:
+def test_validation_and_merge() -> None:
     frames = sample_frames()
-    assert validate_schema(frames).schema_ok
+    report = validate_schema(frames)
+    assert report.schema_ok
 
-    augmented = generate_augmented_dataset(
+    merged = build_merged_dataset(frames)
+    assert not merged.empty
+    assert "tunnel_name" in merged.columns
+
+
+def test_augmentation_generation() -> None:
+    frames = sample_frames()
+    out = generate_augmented_dataset(
         frames["scenario_metadata"],
         frames["timeseries"],
         frames["ground_truth"],
-        AugmentationConfig(target_scenarios=6, seed=3),
+        AugmentationConfig(target_scenarios=5, seed=123),
     )
-    merged = build_merged_dataset(
-        {
-            "tunnel_config": frames["tunnel_config"],
-            "scenario_metadata": augmented["augmented_scenario_metadata"],
-            "timeseries": augmented["augmented_timeseries"],
-            "ground_truth": augmented["augmented_ground_truth"],
-        }
-    )
-
-    ds_cfg = DatasetBuildConfig(sequence_length=3, forecast_horizon=1, stride=1)
-    windowed = build_windowed_training_dataset(merged, ds_cfg)
-    windowed = add_training_targets(windowed, "multi_task")
-    splits = train_val_test_split(windowed, ds_cfg)
-
-    assert not windowed.empty
-    assert all(k in splits for k in ["train", "val", "test"])
-
-
-def test_model_json() -> None:
-    cfg = ModelConfig(model_type="GRU", input_dim=16)
-    loaded = ModelConfig.from_json(cfg.to_json())
-    assert loaded.model_type == "GRU"
-    assert loaded.input_dim == 16
+    assert len(out["augmented_scenario_metadata"]) == 5
+    assert out["augmented_timeseries"]["scenario_id"].nunique() == 5
+    assert out["augmented_ground_truth"]["scenario_id"].nunique() == 5

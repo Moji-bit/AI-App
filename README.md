@@ -1,75 +1,66 @@
-# Tunnel Time-Series AI App
+# Tunnel AI App – Dataset Builder & Augmentation Pipeline
 
-## Ziel
-Diese App unterstützt die vollständige Pipeline:
+Diese Implementierung ergänzt die App um einen vollständigen **Dataset Builder** für das 4-Dateien-Schema:
 
-**Data -> Architecture -> Training -> Inspect -> Predict -> Analysis**
-
-1. Rohdaten importieren
-2. Dataset validieren
-3. Data Augmentation ausführen
-4. großes Trainingsdataset erzeugen
-5. KI-Modell konfigurieren
-6. Modell trainieren
-7. Modell evaluieren
-8. Vorhersagen + Szenarioanalyse
-
-## Tab-Struktur
-1. Introduction
-2. Data Import
-3. Dataset Validation
-4. Data Augmentation
-5. Training Dataset Builder
-6. Model Architecture
-7. Training
-8. Inspect / Explainability
-9. Predict / Inference
-10. Analysis / Evaluation
-
-## 4-Dateien-Schema
-- `tunnel_config.csv`
-- `scenario_metadata.csv`
-- `timeseries.csv`
-- `ground_truth.csv`
+1. `tunnel_config.csv`
+2. `scenario_metadata.csv`
+3. `timeseries.csv`
+4. `ground_truth.csv`
 
 ## Architektur
-- `app/services/data_loader.py`
-- `app/services/schema_validator.py`
-- `app/services/data_merger.py`
-- `app/services/augmentation_engine.py`
-- `app/services/dataset_builder.py`
-- `app/services/model_factory.py`
-- `app/services/trainer.py`
-- `app/services/evaluator.py`
-- `app/services/explainability.py`
-- `app/services/export_service.py`
-- `app/ui/app.py`
-- `app/ui/pages/*.py`
 
-## Start
+- `app/services/data_loader.py`
+  - Lädt und normalisiert CSV-Dateien (`load_tunnel_config`, `load_scenario_metadata`, `load_timeseries`, `load_ground_truth`).
+- `app/services/schema_validator.py`
+  - Validiert Pflichtspalten, numerische Datentypen, fehlende Werte, Plausibilitäten und Cross-File-Konsistenz.
+- `app/services/data_merger.py`
+  - Baut ein konsistentes Trainingsdataset über Joins auf `scenario_id`, `timestamp_s`, `tunnel_id`.
+- `app/services/augmentation_engine.py`
+  - Kern-Augmentation (Signal-Augmentation, event-aware Regeln, Klassen-Balance, Quality Score).
+- `app/services/scenario_generator.py`
+  - Presets, Szenario-Summary und optionale Window-Sequenzen für LSTM/Transformer.
+- `app/services/export_service.py`
+  - Exportiert augmentierte CSV-Dateien und optional merged/windowed Datasets.
+- `app/ui/pages/dataset_builder.py`
+  - Streamlit-UI für Upload, Report, Konfiguration, Preview und Export.
+
+## Starten
+
 ```bash
 pip install -r requirements.txt
 python run_dataset_builder.py
 ```
 
-oder
+oder direkt:
 
 ```bash
-streamlit run app/ui/app.py
+streamlit run app/ui/pages/dataset_builder.py
 ```
 
 ## Beispiel-Workflow
-1. **Data Import**: 4 CSV-Dateien hochladen und Vorschau prüfen.
-2. **Dataset Validation**: Fehler/Warnungen/Passed Checks prüfen.
-3. **Data Augmentation**: Zielanzahl, Stärke, Noise, Shift, Missing, Wetter, Klassenbalance setzen und augmentieren.
-4. **Training Dataset Builder**: Merge + Sliding Windows + Label-Modus + Train/Val/Test Split erzeugen.
-5. **Model Architecture**: Preset wählen oder Parameter manuell setzen; JSON export/import.
-6. **Training**: Trainingsparameter setzen und Lauf starten.
-7. **Inspect / Explainability**: Feature Importance, Attention-Proxy, FP/FN Analyse.
-8. **Predict / Inference**: Einzel-/Batch-Vorhersagen.
-9. **Analysis / Evaluation**: Confusion Matrix + klassische und operationale Metriken.
 
-## Hinweise
-- Augmentation enthält ereignislogische Regeln (accident/congestion/fire/sensor_fault).
-- Quality Score pro augmentiertem Szenario wird in den Metadaten gespeichert.
-- Export umfasst augmentierte CSVs, merged Training Dataset und optional windowed Dataset.
+1. Alle vier CSV-Dateien hochladen.
+2. Schema-Report prüfen (Fehler/Warnungen).
+3. Szenario-Zusammenfassung ansehen (Events, Wetter, Severity, Dauer).
+4. Augmentation konfigurieren:
+   - Ziel-Szenarien
+   - Stärke/Noise
+   - Event-Shift, Missing/Outlier-Rate
+   - Klassen-Balance Ziele
+   - Wettervariationen/Presets
+5. `Generate Augmented Dataset` klicken.
+6. Preview Original vs. Augmentiert über Metriken (`speed`, `flow`, `occupancy`, `co`, `visibility`, `queue`).
+7. Optional Windowed Sequences erzeugen.
+8. Exportieren als:
+   - `augmented_timeseries.csv`
+   - `augmented_ground_truth.csv`
+   - `augmented_scenario_metadata.csv`
+   - optional `augmented_tunnel_config.csv`
+   - optional `merged_training_dataset.csv`
+   - optional `windowed_sequences.csv`
+
+## Hinweise zur Reproduzierbarkeit
+
+- Jeder Lauf kann über `Random Seed` reproduzierbar gemacht werden.
+- Jede augmentierte Instanz bekommt eine neue `scenario_id`.
+- Ground-Truth wird nach Event-Shift und Event-Dauer automatisch synchronisiert.
