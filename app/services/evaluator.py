@@ -3,11 +3,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-try:
-    from sklearn.metrics import average_precision_score, roc_auc_score
-except Exception:  # pragma: no cover
-    average_precision_score = None
-    roc_auc_score = None
+
+RISK_ORDER = {"low": 0, "medium": 1, "high": 2, "critical": 3}
 
 
 def _safe_div(a: float, b: float) -> float:
@@ -21,8 +18,8 @@ def evaluate_predictions(y_true: pd.Series, y_pred: pd.Series) -> dict[str, floa
 
     precisions, recalls, f1s = [], [], []
     for label in labels:
-        t = y_true.astype(str) == label
-        p = y_pred.astype(str) == label
+        t = (y_true.astype(str) == label)
+        p = (y_pred.astype(str) == label)
         tp_l = int((t & p).sum())
         fp_l = int((~t & p).sum())
         fn_l = int((t & ~p).sum())
@@ -45,20 +42,6 @@ def confusion_matrix_df(y_true: pd.Series, y_pred: pd.Series) -> pd.DataFrame:
     labels = sorted(set(y_true.astype(str)) | set(y_pred.astype(str)))
     matrix = pd.crosstab(y_true.astype(str), y_pred.astype(str), rownames=["actual"], colnames=["predicted"], dropna=False)
     return matrix.reindex(index=labels, columns=labels, fill_value=0)
-
-
-def compute_auc_metrics(df: pd.DataFrame) -> dict[str, float | None]:
-    if "target_event_type" not in df.columns:
-        return {"roc_auc": None, "pr_auc": None}
-    y_true = (df["target_event_type"].astype(str) != "normal").astype(int)
-    y_score = pd.to_numeric(df.get("risk_score", pd.Series(0.5, index=df.index)), errors="coerce").fillna(0.5)
-
-    if len(np.unique(y_true)) < 2:
-        return {"roc_auc": None, "pr_auc": None}
-
-    roc = float(roc_auc_score(y_true, y_score)) if roc_auc_score else None
-    pr = float(average_precision_score(y_true, y_score)) if average_precision_score else None
-    return {"roc_auc": roc, "pr_auc": pr}
 
 
 def compute_operational_metrics(df: pd.DataFrame) -> dict[str, float]:

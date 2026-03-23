@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import streamlit as st
 
-from ...services.data_merger import build_merged_dataset
-from ...services.dataset_builder import DatasetBuildConfig, add_training_targets, build_windowed_training_dataset, train_val_test_split
-from ...services.export_service import export_augmented_files
+from app.services.data_merger import build_merged_dataset
+from app.services.dataset_builder import DatasetBuildConfig, add_training_targets, build_windowed_training_dataset, train_val_test_split
+from app.services.export_service import export_augmented_files
 
 
 def render() -> None:
@@ -54,7 +54,6 @@ def render() -> None:
         st.session_state["merged"] = merged
         st.session_state["windowed"] = windowed
         st.session_state["splits"] = splits
-        st.session_state["label_mode"] = label_mode
         st.success("Training Dataset erstellt.")
 
     windowed = st.session_state.get("windowed")
