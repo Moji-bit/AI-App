@@ -47,9 +47,13 @@ def render() -> None:
             val_ratio=float(val_ratio),
             test_ratio=float(test_ratio),
         )
-        windowed = build_windowed_training_dataset(merged, cfg)
-        windowed = add_training_targets(windowed, label_mode)
-        splits = train_val_test_split(windowed, cfg)
+        try:
+            windowed = build_windowed_training_dataset(merged, cfg)
+            windowed = add_training_targets(windowed, label_mode)
+            splits = train_val_test_split(windowed, cfg)
+        except ValueError as exc:
+            st.error(f"Training Dataset konnte nicht erstellt werden: {exc}")
+            return
 
         st.session_state["merged"] = merged
         st.session_state["windowed"] = windowed
