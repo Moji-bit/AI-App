@@ -38,7 +38,6 @@ class AugmentationConfig:
         }
     )
     seed: int = 42
-    min_quality_score: float = 50.0
 
 
 CONTINUOUS_COLUMNS = [
@@ -173,10 +172,11 @@ class AugmentationEngine:
                 vals[flips] = 1 - vals[flips]
                 out[col] = vals
 
-        # sampling variation (without changing timestamp axis to keep GT sync)
-        if "flow_veh_h" in out.columns and n > 4:
-            sample_factor = self.rng.choice([0.92, 0.96, 1.0, 1.04, 1.08], size=n)
-            out["flow_veh_h"] = pd.to_numeric(out["flow_veh_h"], errors="coerce") * sample_factor
+        if "timestamp_s" in out.columns:
+            sample_jitter = self.rng.choice([0, 0, 0, 1, -1], size=n)
+            out["timestamp_s"] = pd.to_numeric(out["timestamp_s"], errors="coerce") + sample_jitter
+            out["timestamp_s"] = out["timestamp_s"].clip(lower=0)
+            out = out.sort_values("timestamp_s").drop_duplicates(subset=["timestamp_s"], keep="first")
 
         return out
 
@@ -228,9 +228,8 @@ class AugmentationEngine:
                 out_ts[col] = pd.to_numeric(out_ts[col], errors="coerce").clip(lower=low, upper=high)
 
         out_gt["timestamp_s"] = pd.to_numeric(out_gt["timestamp_s"], errors="coerce")
-        gt_event_mask = (out_gt["timestamp_s"] >= start) & (out_gt["timestamp_s"] <= end)
-        out_gt["label_event_type"] = np.where(gt_event_mask, event_type, "normal")
-        out_gt["label_event_active"] = np.where(gt_event_mask, 1, 0)
+        out_gt["label_event_type"] = np.where(event_mask.reindex(out_gt.index, fill_value=False), event_type, "normal")
+        out_gt["label_event_active"] = np.where(event_mask.reindex(out_gt.index, fill_value=False), 1, 0)
 
         risk = "low"
         if event_type in {"accident", "sensor_fault"}:
@@ -318,10 +317,7 @@ def generate_augmented_dataset(
 
     generated = 0
     scenario_counter = 1
-    attempts = 0
-    max_attempts = max(config.target_scenarios * 25, 1000)
-    while generated < config.target_scenarios and attempts < max_attempts:
-        attempts += 1
+    while generated < config.target_scenarios:
         for event_class, target_count in requested_by_class.items():
             if generated >= config.target_scenarios:
                 break
@@ -340,13 +336,13 @@ def generate_augmented_dataset(
             new_sid = f"AUG_{event_class[:3].upper()}_{scenario_counter:06d}"
             aug_meta, aug_ts, aug_gt, quality = engine.augment_scenario(source_row, source_ts, source_gt, new_sid)
             aug_meta["scenario_quality_score"] = quality
-            if quality >= config.min_quality_score:
-                outputs_meta.append(aug_meta)
-                outputs_ts.append(aug_ts)
-                outputs_gt.append(aug_gt)
-                generated += 1
-                requested_by_class[event_class] -= 1
+            outputs_meta.append(aug_meta)
+            outputs_ts.append(aug_ts)
+            outputs_gt.append(aug_gt)
+            generated += 1
             scenario_counter += 1
+
+            requested_by_class[event_class] -= 1
 
             if all(v <= 0 for v in requested_by_class.values()):
                 requested_by_class = {

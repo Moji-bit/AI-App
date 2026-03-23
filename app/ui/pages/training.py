@@ -5,7 +5,7 @@ import json
 import plotly.express as px
 import streamlit as st
 
-from ...services.trainer import TrainingConfig, train_model
+from app.services.trainer import TrainingConfig, train_model
 
 
 def render() -> None:
@@ -14,7 +14,6 @@ def render() -> None:
     splits = st.session_state.get("splits")
     model_config = st.session_state.get("model_config")
     windowed = st.session_state.get("windowed")
-    label_mode = st.session_state.get("label_mode", "event_classification")
 
     if windowed is None:
         st.warning("Bitte zuerst Training Dataset Builder ausführen.")
@@ -41,12 +40,6 @@ def render() -> None:
     checkpoint_saving = st.checkbox("checkpoint saving", value=True)
 
     if st.button("Train Model", type="primary"):
-        try:
-            parsed_class_weights = {str(k): float(v) for k, v in json.loads(class_weights).items()}
-        except Exception as exc:
-            st.error(f"Ungültiges class_weights-JSON: {exc}")
-            return
-
         cfg = TrainingConfig(
             epochs=int(epochs),
             batch_size=int(batch_size),
@@ -57,21 +50,18 @@ def render() -> None:
             patience=int(patience),
             use_cuda=bool(use_cuda),
             random_seed=int(random_seed),
-            class_weights=parsed_class_weights,
+            class_weights={str(k): float(v) for k, v in json.loads(class_weights).items()},
             checkpoint_saving=bool(checkpoint_saving),
         )
 
-        try:
-            model, history, summary = train_model(
-                splits["train"] if splits else windowed,
-                splits["val"] if splits else windowed,
-                model_config,
-                cfg,
-                label_mode,
-            )
-        except Exception as exc:
-            st.error(f"Training fehlgeschlagen: {exc}")
-            return
+        label_mode = "target_event" if "target_event" in windowed.columns else "target"
+        model, history, summary = train_model(
+            splits["train"] if splits else windowed,
+            splits["val"] if splits else windowed,
+            model_config,
+            cfg,
+            "multi_task" if "target_event" in windowed.columns else label_mode,
+        )
 
         st.session_state["trained_model"] = model
         st.session_state["training_history"] = history
@@ -81,7 +71,7 @@ def render() -> None:
     history = st.session_state.get("training_history")
     summary = st.session_state.get("training_summary")
 
-    if history is not None and not history.empty:
+    if history is not None:
         fig = px.line(history, x="epoch", y=["train_loss", "val_loss"], title="Training/Validation Loss")
         st.plotly_chart(fig, use_container_width=True)
         st.dataframe(history, use_container_width=True)

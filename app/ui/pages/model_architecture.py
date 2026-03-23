@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from ...services.model_factory import MODEL_PRESETS, ModelConfig, available_model_types, config_from_preset
+from app.services.model_factory import MODEL_PRESETS, ModelConfig, config_from_preset
 
 
 def render() -> None:
@@ -13,7 +13,7 @@ def render() -> None:
 
     c1, c2, c3 = st.columns(3)
     with c1:
-        model_type = st.selectbox("model", available_model_types(), index=max(0, available_model_types().index(cfg.model_type) if cfg.model_type in available_model_types() else 0))
+        model_type = st.selectbox("model", ["LSTM", "GRU", "1D CNN", "Transformer Encoder", "Multi-Task Transformer", "Hybrid CNN + LSTM", "Hybrid CNN + Transformer"], index=0)
         input_dim = st.number_input("input_dim", 1, 4096, cfg.input_dim)
         hidden_dim = st.number_input("hidden_dim", 4, 2048, cfg.hidden_dim)
         d_model = st.number_input("d_model", 8, 2048, cfg.d_model)

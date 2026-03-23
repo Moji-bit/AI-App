@@ -3,7 +3,7 @@ from __future__ import annotations
 import plotly.express as px
 import streamlit as st
 
-from ...services.explainability import attention_proxy, error_breakdown, feature_importance_df
+from app.services.explainability import attention_proxy, error_breakdown, feature_importance_df
 
 
 def render() -> None:

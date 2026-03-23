@@ -4,7 +4,7 @@ import json
 
 import streamlit as st
 
-from ...services.augmentation_engine import AugmentationConfig, PRESETS, generate_augmented_dataset
+from app.services.augmentation_engine import AugmentationConfig, PRESETS, generate_augmented_dataset
 
 
 def render() -> None:
@@ -21,8 +21,6 @@ def render() -> None:
 
     preset = st.selectbox("Preset", ["custom", *PRESETS.keys()])
     cfg = AugmentationConfig()
-    if preset != "custom":
-        cfg = AugmentationConfig(**{**cfg.__dict__, **PRESETS[preset]})
 
     c1, c2, c3 = st.columns(3)
     with c1:
@@ -35,18 +33,12 @@ def render() -> None:
         outlier_rate = st.slider("outlier rate", 0.0, 0.05, cfg.outlier_rate, 0.001)
     with c3:
         seed = st.number_input("random seed", 0, 10_000_000, cfg.seed, 1)
-        min_quality = st.slider("min quality score", 0.0, 100.0, cfg.min_quality_score, 1.0)
         allowed_weather = st.multiselect("allowed weather variation", ["clear", "rain", "snow", "fog", "storm"], cfg.allowed_weather)
 
     class_balance_text = st.text_area("class balance target (JSON)", json.dumps(cfg.class_balance_targets, indent=2), height=160)
 
     if st.button("Run Augmentation", type="primary"):
-        try:
-            class_targets = {str(k): float(v) for k, v in json.loads(class_balance_text).items()}
-        except Exception as exc:
-            st.error(f"Ungültiges Class-Balance-JSON: {exc}")
-            return
-
+        class_targets = {str(k): float(v) for k, v in json.loads(class_balance_text).items()}
         run_cfg = AugmentationConfig(
             target_scenarios=int(target_scenarios),
             augmentation_strength=float(augmentation_strength),
@@ -57,7 +49,6 @@ def render() -> None:
             allowed_weather=list(allowed_weather),
             class_balance_targets=class_targets,
             seed=int(seed),
-            min_quality_score=float(min_quality),
         )
         augmented = generate_augmented_dataset(
             frames["scenario_metadata"],
@@ -70,14 +61,5 @@ def render() -> None:
 
     augmented = st.session_state.get("augmented")
     if augmented:
-        meta = augmented["augmented_scenario_metadata"]
-        st.write("Augmented scenario count:", len(meta))
-        if "scenario_quality_score" in meta.columns:
-            st.write(
-                {
-                    "quality_min": float(meta["scenario_quality_score"].min()),
-                    "quality_mean": float(meta["scenario_quality_score"].mean()),
-                    "quality_max": float(meta["scenario_quality_score"].max()),
-                }
-            )
-        st.dataframe(meta.head(50), use_container_width=True)
+        st.write("Augmented scenario count:", len(augmented["augmented_scenario_metadata"]))
+        st.dataframe(augmented["augmented_scenario_metadata"].head(50), use_container_width=True)

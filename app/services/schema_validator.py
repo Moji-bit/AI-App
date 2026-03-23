@@ -213,26 +213,6 @@ def _check_missing_values(name: str, df: pd.DataFrame, report: ValidationReport)
         report.warnings.append(f"{name}: missing values detected")
 
 
-
-
-def _check_duplicates(frames: dict[str, pd.DataFrame], report: ValidationReport) -> None:
-    meta = frames.get("scenario_metadata", pd.DataFrame())
-    ts = frames.get("timeseries", pd.DataFrame())
-    gt = frames.get("ground_truth", pd.DataFrame())
-
-    if not meta.empty and "scenario_id" in meta.columns and meta["scenario_id"].duplicated().any():
-        report.errors.append("scenario_metadata.scenario_id contains duplicates")
-
-    if not ts.empty and {"scenario_id", "timestamp_s"}.issubset(ts.columns):
-        dup_ts = ts.duplicated(subset=["scenario_id", "timestamp_s"]).sum()
-        if dup_ts:
-            report.errors.append(f"timeseries has duplicate (scenario_id,timestamp_s): {int(dup_ts)}")
-
-    if not gt.empty and {"scenario_id", "timestamp_s"}.issubset(gt.columns):
-        dup_gt = gt.duplicated(subset=["scenario_id", "timestamp_s"]).sum()
-        if dup_gt:
-            report.errors.append(f"ground_truth has duplicate (scenario_id,timestamp_s): {int(dup_gt)}")
-
 def _check_plausibility(frames: dict[str, pd.DataFrame], report: ValidationReport) -> None:
     ts = frames["timeseries"]
     checks = [
@@ -260,9 +240,11 @@ def validate_schema(frames: dict[str, pd.DataFrame]) -> ValidationReport:
         _check_numeric_types(name, df, report)
         _check_missing_values(name, df, report)
 
+        if name == "scenario_metadata" and "scenario_id" in df.columns:
+            if df["scenario_id"].duplicated().any():
+                report.errors.append("scenario_metadata.scenario_id contains duplicates")
 
     if all(k in frames for k in ["timeseries", "ground_truth", "scenario_metadata", "tunnel_config"]):
-        _check_duplicates(frames, report)
         _check_plausibility(frames, report)
         consistency_errors, consistency_warnings = validate_cross_file_consistency(frames)
         report.errors.extend(consistency_errors)
