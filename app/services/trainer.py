@@ -146,11 +146,7 @@ def train_model(
 
     history = pd.DataFrame(history_rows)
     feature_cols = _feature_columns(train_df)
-    if "target_tte" in train_df.columns:
-        target_tte_base = train_df["target_tte"]
-    else:
-        target_tte_base = pd.Series(np.nan, index=train_df.index, dtype=float)
-    target_tte_series = pd.to_numeric(target_tte_base, errors="coerce")
+    target_tte_series = pd.to_numeric(train_df.get("target_tte", pd.Series(np.nan, index=train_df.index)), errors="coerce")
     feature_importance = {}
     for c in feature_cols:
         corr = pd.to_numeric(train_df[c], errors="coerce").corr(target_tte_series)

@@ -445,19 +445,18 @@ def register_handlers(input, output, session) -> None:
         if corr is None or corr.empty:
             return px.imshow(pd.DataFrame([[0]], columns=["no_data"], index=["no_data"]), title="Korrelationen")
         cols = corr.columns[:20]
-        corr_view = corr.loc[cols, cols].replace([float("inf"), float("-inf")], 0).fillna(0)
-        return px.imshow(corr_view, text_auto=False, title="Feature-Korrelationen")
+        return px.imshow(corr.loc[cols, cols], text_auto=False, title="Feature-Korrelationen")
 
     @output
     @render_widget
     def feature_distribution_plot():
         frames = _get()["frames"]
         if not frames:
-            return px.bar(pd.DataFrame({"feature": ["no_data"], "count": [0]}), x="feature", y="count", title="Feature-Verteilung")
+            return px.histogram(title="Feature-Verteilung")
         ts = frames["timeseries"]
         col = "speed_mean_kmh" if "speed_mean_kmh" in ts.columns else (ts.select_dtypes(include="number").columns[0] if not ts.select_dtypes(include="number").empty else None)
         if col is None:
-            return px.bar(pd.DataFrame({"feature": ["none"], "count": [0]}), x="feature", y="count", title="Keine numerischen Features")
+            return px.histogram(title="Keine numerischen Features")
         return px.histogram(ts, x=col, nbins=40, title=f"Verteilung: {col}")
 
     @output
