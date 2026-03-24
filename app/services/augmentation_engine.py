@@ -168,7 +168,7 @@ class AugmentationEngine:
                 vals = pd.to_numeric(out[col], errors="coerce").fillna(0)
                 flip_prob = 0.01 + self.config.augmentation_strength * 0.02
                 flips = self.rng.random(n) < flip_prob
-                vals = vals.astype(int).to_numpy()
+                vals = vals.astype(int).to_numpy(copy=True)
                 vals[flips] = 1 - vals[flips]
                 out[col] = vals
 

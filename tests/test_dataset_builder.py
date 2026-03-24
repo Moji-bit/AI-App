@@ -168,3 +168,28 @@ def test_windowed_builder_empty_still_has_target_columns() -> None:
     assert "target_event_type" in with_target.columns
     assert "target" in with_target.columns
     assert with_target.empty
+
+
+def test_augmentation_handles_nullable_binary_columns() -> None:
+    frames = sample_frames()
+    binary_cols = [
+        "barrier_entry_state",
+        "barrier_exit_state",
+        "fire_alarm_state",
+        "sos_calls_active",
+        "emergency_mode_active",
+        "sensor_fault_active",
+        "fan_fault_active",
+        "camera_fault_active",
+    ]
+    for col in binary_cols:
+        frames["timeseries"][col] = frames["timeseries"][col].astype("Int64")
+
+    out = generate_augmented_dataset(
+        frames["scenario_metadata"],
+        frames["timeseries"],
+        frames["ground_truth"],
+        AugmentationConfig(target_scenarios=5, seed=7),
+    )
+
+    assert len(out["augmented_scenario_metadata"]) == 5
