@@ -169,7 +169,7 @@ NUMERIC_COLUMNS: dict[str, list[str]] = {
 
 ALLOWED_CATEGORICAL = {
     "weather_type": {"clear", "rain", "snow", "fog", "storm"},
-    "event_type": {"normal", "congestion", "accident", "fire", "sensor_fault"},
+    "event_type": {"normal", "congestion", "accident", "fire", "sensor_fault", "vehicle_fire"},
     "event_severity": {"low", "medium", "high", "critical"},
 }
 
@@ -179,6 +179,8 @@ class ValidationReport:
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     missing_values: dict[str, dict[str, int]] = field(default_factory=dict)
+    duplicate_rows: dict[str, int] = field(default_factory=dict)
+    ml_findings: list[str] = field(default_factory=list)
     schema_ok: bool = False
 
     def to_dict(self) -> dict[str, Any]:
@@ -186,6 +188,8 @@ class ValidationReport:
             "errors": self.errors,
             "warnings": self.warnings,
             "missing_values": self.missing_values,
+            "duplicate_rows": self.duplicate_rows,
+            "ml_findings": self.ml_findings,
             "schema_ok": self.schema_ok,
         }
 
@@ -213,6 +217,22 @@ def _check_missing_values(name: str, df: pd.DataFrame, report: ValidationReport)
         report.warnings.append(f"{name}: missing values detected")
 
 
+def _check_duplicates(name: str, df: pd.DataFrame, report: ValidationReport) -> None:
+    duplicate_count = int(df.duplicated().sum())
+    if duplicate_count > 0:
+        report.duplicate_rows[name] = duplicate_count
+        report.warnings.append(f"{name}: {duplicate_count} duplicate rows")
+
+
+def _check_categorical_values(name: str, df: pd.DataFrame, report: ValidationReport) -> None:
+    for column, allowed in ALLOWED_CATEGORICAL.items():
+        if column not in df.columns:
+            continue
+        bad_values = sorted(set(df[column].dropna().astype(str).str.lower()) - allowed)
+        if bad_values:
+            report.warnings.append(f"{name}.{column}: unknown values found: {', '.join(bad_values[:5])}")
+
+
 def _check_plausibility(frames: dict[str, pd.DataFrame], report: ValidationReport) -> None:
     ts = frames["timeseries"]
     checks = [
@@ -229,9 +249,37 @@ def _check_plausibility(frames: dict[str, pd.DataFrame], report: ValidationRepor
             report.warnings.append(f"timeseries.{col}: {len(invalid)} values outside plausible range [{low}, {high}]")
 
 
+def _check_ml_data_quality(frames: dict[str, pd.DataFrame], report: ValidationReport) -> None:
+    meta = frames["scenario_metadata"]
+    ts = frames["timeseries"]
+    gt = frames["ground_truth"]
+
+    if "label_event_type" in gt.columns:
+        distribution = gt["label_event_type"].astype(str).value_counts(normalize=True)
+        if not distribution.empty and distribution.iloc[0] > 0.9:
+            report.ml_findings.append(
+                f"Strong class imbalance: class '{distribution.index[0]}' has {distribution.iloc[0]:.1%} share"
+            )
+
+    if {"scenario_id", "timestamp_s"}.issubset(ts.columns) and {"scenario_id", "timestamp_s"}.issubset(gt.columns):
+        merged = ts[["scenario_id", "timestamp_s"]].merge(
+            gt[["scenario_id", "timestamp_s"]], on=["scenario_id", "timestamp_s"], how="outer", indicator=True
+        )
+        missing_alignment = int((merged["_merge"] != "both").sum())
+        if missing_alignment > 0:
+            report.ml_findings.append(f"Timestamp alignment mismatch between timeseries and ground_truth: {missing_alignment} rows")
+
+    if "event_start_s" in meta.columns and "simulation_duration_s" in meta.columns:
+        starts = pd.to_numeric(meta["event_start_s"], errors="coerce")
+        durations = pd.to_numeric(meta["simulation_duration_s"], errors="coerce")
+        invalid = int(((starts < 0) | (starts > durations)).sum())
+        if invalid > 0:
+            report.ml_findings.append(f"event_start_s out of simulation range in {invalid} scenarios")
+
+
 def validate_schema(frames: dict[str, pd.DataFrame]) -> ValidationReport:
     report = ValidationReport()
-    for name, required_cols in REQUIRED_COLUMNS.items():
+    for name in REQUIRED_COLUMNS:
         if name not in frames:
             report.errors.append(f"Missing required file: {name}")
             continue
@@ -239,13 +287,15 @@ def validate_schema(frames: dict[str, pd.DataFrame]) -> ValidationReport:
         _check_required_columns(name, df, report)
         _check_numeric_types(name, df, report)
         _check_missing_values(name, df, report)
+        _check_duplicates(name, df, report)
+        _check_categorical_values(name, df, report)
 
-        if name == "scenario_metadata" and "scenario_id" in df.columns:
-            if df["scenario_id"].duplicated().any():
-                report.errors.append("scenario_metadata.scenario_id contains duplicates")
+        if name == "scenario_metadata" and "scenario_id" in df.columns and df["scenario_id"].duplicated().any():
+            report.errors.append("scenario_metadata.scenario_id contains duplicates")
 
     if all(k in frames for k in ["timeseries", "ground_truth", "scenario_metadata", "tunnel_config"]):
         _check_plausibility(frames, report)
+        _check_ml_data_quality(frames, report)
         consistency_errors, consistency_warnings = validate_cross_file_consistency(frames)
         report.errors.extend(consistency_errors)
         report.warnings.extend(consistency_warnings)
@@ -258,52 +308,22 @@ def validate_cross_file_consistency(frames: dict[str, pd.DataFrame]) -> tuple[li
     errors: list[str] = []
     warnings: list[str] = []
 
-    meta = frames["scenario_metadata"]
-    ts = frames["timeseries"]
-    gt = frames["ground_truth"]
-    tun = frames["tunnel_config"]
+    tunnel_ids = set(frames["tunnel_config"]["tunnel_id"].astype(str).unique()) if "tunnel_id" in frames["tunnel_config"] else set()
+    meta_tunnel = set(frames["scenario_metadata"]["tunnel_id"].astype(str).unique()) if "tunnel_id" in frames["scenario_metadata"] else set()
+    if not meta_tunnel.issubset(tunnel_ids):
+        errors.append("scenario_metadata.tunnel_id contains values not present in tunnel_config")
 
-    meta_ids = set(meta["scenario_id"].astype(str))
-    ts_ids = set(ts["scenario_id"].astype(str))
-    gt_ids = set(gt["scenario_id"].astype(str))
+    meta_ids = set(frames["scenario_metadata"]["scenario_id"].astype(str).unique()) if "scenario_id" in frames["scenario_metadata"] else set()
+    ts_ids = set(frames["timeseries"]["scenario_id"].astype(str).unique()) if "scenario_id" in frames["timeseries"] else set()
+    gt_ids = set(frames["ground_truth"]["scenario_id"].astype(str).unique()) if "scenario_id" in frames["ground_truth"] else set()
 
-    if ts_ids - meta_ids:
-        errors.append(f"timeseries has unknown scenario_id values: {len(ts_ids - meta_ids)}")
-    if gt_ids - meta_ids:
-        errors.append(f"ground_truth has unknown scenario_id values: {len(gt_ids - meta_ids)}")
+    if not ts_ids.issubset(meta_ids):
+        errors.append("timeseries.scenario_id contains values not present in scenario_metadata")
+    if not gt_ids.issubset(meta_ids):
+        errors.append("ground_truth.scenario_id contains values not present in scenario_metadata")
 
-    tunnel_ids = set(tun["tunnel_id"].astype(str))
-    meta_tunnel_ids = set(meta["tunnel_id"].astype(str))
-    if meta_tunnel_ids - tunnel_ids:
-        errors.append(f"scenario_metadata references unknown tunnel_id values: {len(meta_tunnel_ids - tunnel_ids)}")
-
-    ts_index = set(zip(ts["scenario_id"].astype(str), pd.to_numeric(ts["timestamp_s"], errors="coerce")))
-    gt_index = set(zip(gt["scenario_id"].astype(str), pd.to_numeric(gt["timestamp_s"], errors="coerce")))
-    if ts_index != gt_index:
-        only_ts = len(ts_index - gt_index)
-        only_gt = len(gt_index - ts_index)
-        errors.append(f"timestamp mismatch between timeseries and ground_truth (timeseries_only={only_ts}, ground_truth_only={only_gt})")
-
-    for state_col in [
-        "barrier_entry_state",
-        "barrier_exit_state",
-        "fire_alarm_state",
-        "sos_calls_active",
-        "emergency_mode_active",
-        "sensor_fault_active",
-        "fan_fault_active",
-        "camera_fault_active",
-    ]:
-        if state_col in ts.columns:
-            vals = set(pd.to_numeric(ts[state_col], errors="coerce").dropna().astype(int).unique())
-            if not vals.issubset({0, 1}):
-                warnings.append(f"timeseries.{state_col} contains non-binary values: {sorted(vals)}")
-
-    for cat_col, allowed in ALLOWED_CATEGORICAL.items():
-        if cat_col in meta.columns:
-            values = set(meta[cat_col].astype(str).str.lower().unique())
-            unknown = values - allowed
-            if unknown:
-                warnings.append(f"scenario_metadata.{cat_col} has out-of-list values: {sorted(unknown)}")
+    orphaned_meta = meta_ids - (ts_ids & gt_ids)
+    if orphaned_meta:
+        warnings.append(f"scenario_metadata contains {len(orphaned_meta)} scenarios without complete ts+gt coverage")
 
     return errors, warnings
