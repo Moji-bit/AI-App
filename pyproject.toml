@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tunnel-ai-app"
+version = "0.1.0"
+description = "Tunnel AI analytics app migrated to Shiny for Python"
+requires-python = ">=3.10"
+dependencies = [
+  "pandas>=2.0",
+  "numpy>=1.25",
+  "plotly>=5.0",
+  "pyyaml>=6.0",
+  "shiny>=1.0.0",
+  "shinywidgets>=0.3.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
