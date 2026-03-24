@@ -69,3 +69,7 @@ Die App verwendet:
 
 - Die alte Streamlit-Oberfläche unter `app/ui/*` wurde entfernt.
 - Startbefehl ist jetzt `shiny run --reload app.py` statt `streamlit run ...`.
+
+## Testplan
+
+Ein detaillierter manueller End-to-End-Workflow-Testplan liegt unter `docs/WORKFLOW_TESTPLAN.md`.
