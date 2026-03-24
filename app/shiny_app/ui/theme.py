@@ -37,6 +37,41 @@ body {
   margin-bottom: .9rem;
   box-shadow: 0 8px 20px rgba(0,0,0,.25);
 }
+.card, .card h1, .card h2, .card h3, .card h4, .card h5, .card h6,
+.card label, .card .form-label, .card .form-text, .card p, .card span {
+  color: var(--text);
+}
+.card .text-muted, .card small, .card .help-block { color: var(--muted) !important; }
+.form-control, .form-select {
+  background: rgba(11,16,32,.7);
+  color: var(--text);
+  border: 1px solid rgba(255,255,255,.22);
+}
+.form-control::placeholder { color: var(--muted); }
+.form-control:focus, .form-select:focus {
+  background: rgba(11,16,32,.9);
+  color: var(--text);
+  border-color: rgba(103,183,255,.65);
+  box-shadow: 0 0 0 .2rem rgba(103,183,255,.2);
+}
+.btn { color: #f7fbff; }
+.btn-outline-secondary { color: var(--text); border-color: rgba(255,255,255,.3); }
+.btn:disabled, .btn.disabled {
+  color: rgba(232,237,255,.65) !important;
+  border-color: rgba(255,255,255,.18) !important;
+}
+.shiny-text-output, .shiny-html-output, .shiny-input-container > label { color: var(--text); }
+pre, .form-control[readonly], .shiny-text-output pre {
+  color: var(--text);
+  background: rgba(11,16,32,.75);
+}
+.table, .table th, .table td,
+.dataframe, .dataframe th, .dataframe td {
+  color: var(--text) !important;
+}
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+  color: var(--text) !important;
+}
 .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; }
 .kpi {
   background: rgba(26,35,68,.95);
