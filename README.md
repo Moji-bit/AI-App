@@ -1,68 +1,71 @@
-# Tunnel AI App – Dataset Builder & Augmentation Pipeline
+# Tunnel AI App – Shiny for Python Migration
 
-Diese Implementierung ergänzt die App um einen vollständigen **Dataset Builder** für das 4-Dateien-Schema:
+Diese Anwendung wurde vollständig auf **Shiny for Python** migriert und als moderne, workflow-orientierte Analytics-App neu aufgebaut.
 
-1. `tunnel_config.csv`
-2. `scenario_metadata.csv`
-3. `timeseries.csv`
-4. `ground_truth.csv`
-
-## Architektur
-
-- `app/services/data_loader.py`
-  - Lädt und normalisiert CSV-Dateien (`load_tunnel_config`, `load_scenario_metadata`, `load_timeseries`, `load_ground_truth`).
-- `app/services/schema_validator.py`
-  - Validiert Pflichtspalten, numerische Datentypen, fehlende Werte, Plausibilitäten und Cross-File-Konsistenz.
-- `app/services/data_merger.py`
-  - Baut ein konsistentes Trainingsdataset über Joins auf `scenario_id`, `timestamp_s`, `tunnel_id`.
-- `app/services/augmentation_engine.py`
-  - Kern-Augmentation (Signal-Augmentation, event-aware Regeln, Klassen-Balance, Quality Score).
-- `app/services/scenario_generator.py`
-  - Presets, Szenario-Summary und optionale Window-Sequenzen für LSTM/Transformer.
-- `app/services/export_service.py`
-  - Exportiert augmentierte CSV-Dateien und optional merged/windowed Datasets.
-- `app/ui/pages/dataset_builder.py`
-  - Streamlit-UI für Upload, Report, Konfiguration, Preview und Export.
-
-## Starten
-
-Die Hauptanwendung startet über `app/ui/app.py` (alle Tabs):
+## Start
 
 ```bash
 pip install -r requirements.txt
-streamlit run app/ui/app.py
+shiny run --reload app:app
 ```
 
-Optional kannst du nur den Dataset-Builder einzeln starten:
+Alternativ:
 
 ```bash
-streamlit run app/ui/pages/dataset_builder.py
+python main.py
 ```
 
-## Beispiel-Workflow
+## Neue Architektur
 
-1. Alle vier CSV-Dateien hochladen.
-2. Schema-Report prüfen (Fehler/Warnungen).
-3. Szenario-Zusammenfassung ansehen (Events, Wetter, Severity, Dauer).
-4. Augmentation konfigurieren:
-   - Ziel-Szenarien
-   - Stärke/Noise
-   - Event-Shift, Missing/Outlier-Rate
-   - Klassen-Balance Ziele
-   - Wettervariationen/Presets
-5. `Generate Augmented Dataset` klicken.
-6. Preview Original vs. Augmentiert über Metriken (`speed`, `flow`, `occupancy`, `co`, `visibility`, `queue`).
-7. Optional Windowed Sequences erzeugen.
-8. Exportieren als:
-   - `augmented_timeseries.csv`
-   - `augmented_ground_truth.csv`
-   - `augmented_scenario_metadata.csv`
-   - optional `augmented_tunnel_config.csv`
-   - optional `merged_training_dataset.csv`
-   - optional `windowed_sequences.csv`
+```text
+app.py                               # zentraler Shiny-Einstiegspunkt
+app/
+  services/                          # Fachlogik (Import, Validierung, Augmentation, Training, Evaluation)
+  shiny_app/
+    application.py                   # App-Wiring (UI + Server)
+    ui/
+      layout.py                      # komplette Seiten-/Workflow-Komposition
+      theme.py                       # modernes CSS-Theme
+    server/
+      handlers.py                    # reaktive Handler, State, Event-Workflows
+tests/
+  test_dataset_builder.py            # Kern-Tests für Pipeline-Funktionen
+main.py                              # lokaler Start-Wrapper
+requirements.txt
+```
 
-## Hinweise zur Reproduzierbarkeit
+## Funktionsumfang (migriert)
 
-- Jeder Lauf kann über `Random Seed` reproduzierbar gemacht werden.
-- Jede augmentierte Instanz bekommt eine neue `scenario_id`.
-- Ground-Truth wird nach Event-Shift und Event-Dauer automatisch synchronisiert.
+- Upload der 4 Rohdaten-Dateien (`tunnel_config`, `scenario_metadata`, `timeseries`, `ground_truth`)
+- Schema- und Konsistenzvalidierung
+- Datenaugmentation mit parametrischer Konfiguration
+- Building von Windowed-Trainingsdaten inkl. Split (train/val/test)
+- Modellkonfiguration + Training
+- Inferenz (single scenario/window/batch)
+- Evaluation (Metriken + Confusion Matrix)
+- Explainability (Feature Importance)
+- Export der erzeugten Artefakte
+
+## UI/UX-Konzept
+
+Die Shiny-Oberfläche folgt einem klaren Produkt-Workflow:
+
+1. **Data Intake**: Upload + Validierung
+2. **Augmentation**: Generierung zusätzlicher Szenarien
+3. **Dataset Builder**: Feature-/Window-Building und Splits
+4. **Model & Training**: Modell- und Trainingsparameter, Trainingsergebnisse
+5. **Inference & Evaluation**: Vorhersage, Metriken, Matrix, Importance
+6. **Export**: Persistenz der erzeugten Datensätze
+
+Die App verwendet:
+
+- modernes Navbar-Layout
+- Hero-Bereich + KPI-Kacheln
+- card-basiertes Section-Design
+- konsistente Abstände und Typografie
+- klare Trennung von Eingabe, Verarbeitung und Ergebnisdarstellung
+
+## Breaking Changes
+
+- Die alte Streamlit-Oberfläche unter `app/ui/*` wurde entfernt.
+- Startbefehl ist jetzt `shiny run --reload app:app` statt `streamlit run ...`.
