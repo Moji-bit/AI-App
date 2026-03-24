@@ -6,8 +6,7 @@ Diese Anwendung wurde vollständig auf **Shiny for Python** migriert und als mod
 
 ```bash
 pip install -r requirements.txt
-pip install -e .
-shiny run --reload app:app
+shiny run --reload app.py
 ```
 
 Alternativ:
@@ -69,4 +68,4 @@ Die App verwendet:
 ## Breaking Changes
 
 - Die alte Streamlit-Oberfläche unter `app/ui/*` wurde entfernt.
-- Startbefehl ist jetzt `shiny run --reload app:app` statt `streamlit run ...`.
+- Startbefehl ist jetzt `shiny run --reload app.py` statt `streamlit run ...`.
