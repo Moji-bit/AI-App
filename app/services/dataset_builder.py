@@ -85,8 +85,13 @@ def build_windowed_training_dataset(merged: pd.DataFrame, config: DatasetBuildCo
             row.update(features)
             rows.append(row)
 
-    windowed = pd.DataFrame(rows, columns=BASE_WINDOWED_COLUMNS)
-    return windowed
+    # Keep engineered feature columns instead of truncating to base metadata columns.
+    windowed = pd.DataFrame(rows)
+    if windowed.empty:
+        return pd.DataFrame(columns=BASE_WINDOWED_COLUMNS)
+
+    ordered = BASE_WINDOWED_COLUMNS + [c for c in windowed.columns if c not in BASE_WINDOWED_COLUMNS]
+    return windowed[ordered]
 
 
 def add_training_targets(windowed: pd.DataFrame, mode: LabelMode) -> pd.DataFrame:
@@ -118,8 +123,8 @@ def add_training_targets(windowed: pd.DataFrame, mode: LabelMode) -> pd.DataFram
 
 def train_val_test_split(windowed: pd.DataFrame, config: DatasetBuildConfig) -> dict[str, pd.DataFrame]:
     rng = np.random.default_rng(config.random_seed)
-    scenario_ids = windowed["scenario_id"].dropna().unique().astype(str)
-    shuffled = scenario_ids.copy()
+    scenario_ids = windowed["scenario_id"].dropna().astype(str).unique().tolist()
+    shuffled = np.array(scenario_ids, dtype=object)
     rng.shuffle(shuffled)
 
     n = len(shuffled)
