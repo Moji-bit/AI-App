@@ -82,6 +82,10 @@ pre, .form-control[readonly], .shiny-text-output pre {
 .kpi .label { color: var(--muted); font-size: .8rem; }
 .kpi .value { font-size: 1.15rem; font-weight: 600; }
 .navbar { border-bottom: 1px solid rgba(255,255,255,.08); }
+
+.quick-split { display:flex; gap:.5rem; margin-bottom:.6rem; flex-wrap:wrap; }
+.quick-split .btn { background: rgba(103,183,255,.15); border: 1px solid rgba(103,183,255,.45); }
+
 .form-control, .form-select, .btn, .shiny-input-container { border-radius: 10px !important; }
 @media (max-width: 1000px) {
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
