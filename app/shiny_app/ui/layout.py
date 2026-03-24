@@ -7,18 +7,17 @@ from .theme import app_styles
 
 
 def build_layout() -> ui.Tag:
-    hero_header = ui.div(
-        {"class": "app-shell"},
-        ui.div(
-            {"class": "hero"},
-            ui.h1("Tunnel AI Analytics Studio"),
-            ui.p("End-to-End Workflow für Import, Validierung, Augmentation, Training, Inferenz und Evaluation in Shiny for Python."),
-        ),
-        ui.output_ui("kpi_cards"),
-    )
-
     return ui.page_navbar(
         ui.head_content(ui.tags.style(app_styles())),
+        ui.div(
+            {"class": "app-shell"},
+            ui.div(
+                {"class": "hero"},
+                ui.h1("Tunnel AI Analytics Studio"),
+                ui.p("End-to-End Workflow für Import, Validierung, Augmentation, Training, Inferenz und Evaluation in Shiny for Python."),
+            ),
+            ui.output_ui("kpi_cards"),
+        ),
         ui.nav_panel(
             "Data Intake",
             ui.layout_columns(
@@ -163,5 +162,4 @@ def build_layout() -> ui.Tag:
         ),
         title="Tunnel AI App",
         id="main_nav",
-        header=hero_header,
     )
