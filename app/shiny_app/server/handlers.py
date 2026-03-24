@@ -5,6 +5,7 @@ from typing import Any
 
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 from shiny import reactive, render, ui
 from shinywidgets import render_widget
 
@@ -32,6 +33,12 @@ def _model_layers(cfg: ModelConfig) -> pd.DataFrame:
         rows.append({"layer": idx + 2, "type": cfg.model_type, "shape": f"({cfg.sequence_length},{units})", "params": int(units * (cfg.input_dim + 1))})
     rows.append({"layer": cfg.num_layers + 2, "type": "Output Heads", "shape": "event/risk/tte", "params": 3 * max(cfg.hidden_dim, cfg.d_model)})
     return pd.DataFrame(rows)
+
+
+def _empty_figure(title: str) -> go.Figure:
+    fig = go.Figure()
+    fig.update_layout(title=title)
+    return fig
 
 
 def register_handlers(input, output, session) -> None:
@@ -452,11 +459,11 @@ def register_handlers(input, output, session) -> None:
     def feature_distribution_plot():
         frames = _get()["frames"]
         if not frames:
-            return px.histogram(title="Feature-Verteilung")
+            return _empty_figure("Feature-Verteilung")
         ts = frames["timeseries"]
         col = "speed_mean_kmh" if "speed_mean_kmh" in ts.columns else (ts.select_dtypes(include="number").columns[0] if not ts.select_dtypes(include="number").empty else None)
         if col is None:
-            return px.histogram(title="Keine numerischen Features")
+            return _empty_figure("Keine numerischen Features")
         return px.histogram(ts, x=col, nbins=40, title=f"Verteilung: {col}")
 
     @output
@@ -464,10 +471,10 @@ def register_handlers(input, output, session) -> None:
     def event_timeline_plot():
         frames = _get()["frames"]
         if not frames:
-            return px.line(title="Event-Timeline")
+            return _empty_figure("Event-Timeline")
         gt = frames["ground_truth"].copy()
         if not {"timestamp_s", "label_event_active"}.issubset(gt.columns):
-            return px.line(title="Event-Timeline")
+            return _empty_figure("Event-Timeline")
         gt["label_event_active"] = pd.to_numeric(gt["label_event_active"], errors="coerce").fillna(0)
         timeline = gt.groupby("timestamp_s", as_index=False)["label_event_active"].mean()
         return px.line(timeline, x="timestamp_s", y="label_event_active", title="Event-Verlauf (Aktivitätsrate)")
@@ -515,7 +522,7 @@ def register_handlers(input, output, session) -> None:
     def split_distribution_plot():
         s = _get()
         if not s["splits"]:
-            return px.bar(title="Split-Verteilung")
+            return _empty_figure("Split-Verteilung")
         rows = []
         for split_name, df in s["splits"].items():
             rows.append({"split": split_name, "samples": len(df), "scenarios": df["scenario_id"].nunique() if "scenario_id" in df.columns else 0})
@@ -527,10 +534,10 @@ def register_handlers(input, output, session) -> None:
     def feature_plot():
         windowed = _get()["windowed"]
         if windowed is None or windowed.empty:
-            return px.scatter(title="Noch keine Features verfügbar")
+            return _empty_figure("Noch keine Features verfügbar")
         numeric = windowed.select_dtypes(include="number")
         if numeric.empty:
-            return px.scatter(title="Keine numerischen Features")
+            return _empty_figure("Keine numerischen Features")
         means = numeric.mean().sort_values(ascending=False).head(15)
         df = pd.DataFrame({"feature": means.index, "value": means.values})
         return px.bar(df, x="feature", y="value", title="Top Feature-Mittelwerte")
@@ -570,7 +577,7 @@ def register_handlers(input, output, session) -> None:
         s = _get()
         cfg = s["model_config"]
         if cfg is None:
-            return px.bar(title="Keine Modellkonfiguration gespeichert")
+            return _empty_figure("Keine Modellkonfiguration gespeichert")
         layers = _model_layers(cfg)
         return px.bar(layers, x="layer", y="params", color="type", hover_data=["shape"], title="Modellarchitektur (Layer/Parameter)")
 
@@ -579,7 +586,7 @@ def register_handlers(input, output, session) -> None:
     def training_plot():
         history = _get()["history"]
         if history is None or history.empty:
-            return px.line(title="Noch keine Trainingshistorie")
+            return _empty_figure("Noch keine Trainingshistorie")
         return px.line(history, x="epoch", y=["train_loss", "val_loss", "accuracy", "precision", "recall", "f1"], title="Training Metriken")
 
     @output
@@ -613,7 +620,7 @@ def register_handlers(input, output, session) -> None:
     def prediction_timeline_plot():
         preds = _get()["predictions"]
         if preds is None or preds.empty:
-            return px.line(title="Prediction Verlauf")
+            return _empty_figure("Prediction Verlauf")
         if "window_end_s" not in preds.columns:
             preds = preds.reset_index().rename(columns={"index": "window_end_s"})
         return px.line(preds.sort_values("window_end_s"), x="window_end_s", y="confidence", color="predicted_event_type", title="Vorhersage-Verlauf")
@@ -623,7 +630,7 @@ def register_handlers(input, output, session) -> None:
     def importance_plot():
         model = _get()["trained_model"]
         if model is None:
-            return px.bar(title="Keine Feature Importance verfügbar")
+            return _empty_figure("Keine Feature Importance verfügbar")
         fi = feature_importance_df(model).head(20).copy()
         if fi.empty:
             return px.bar(pd.DataFrame({"feature": ["none"], "importance": [0.0]}), x="feature", y="importance", title="Feature Importance")
