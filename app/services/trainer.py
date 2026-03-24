@@ -81,9 +81,14 @@ def train_model(
     )
 
     feature_cols = _feature_columns(train_df)
+    target_tte_series = (
+        pd.to_numeric(train_df["target_tte"], errors="coerce")
+        if "target_tte" in train_df.columns
+        else pd.Series(np.nan, index=train_df.index, dtype=float)
+    )
     feature_importance = {}
     for c in feature_cols:
-        corr = train_df[c].corr(pd.to_numeric(train_df.get("target_tte", np.nan), errors="coerce"))
+        corr = pd.to_numeric(train_df[c], errors="coerce").corr(target_tte_series)
         feature_importance[c] = float(abs(corr)) if not np.isnan(corr) else float(rng.random() * 0.2)
 
     if not feature_importance:
