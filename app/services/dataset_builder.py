@@ -85,8 +85,13 @@ def build_windowed_training_dataset(merged: pd.DataFrame, config: DatasetBuildCo
             row.update(features)
             rows.append(row)
 
-    windowed = pd.DataFrame(rows, columns=BASE_WINDOWED_COLUMNS)
-    return windowed
+    # Keep engineered feature columns instead of truncating to base metadata columns.
+    windowed = pd.DataFrame(rows)
+    if windowed.empty:
+        return pd.DataFrame(columns=BASE_WINDOWED_COLUMNS)
+
+    ordered = BASE_WINDOWED_COLUMNS + [c for c in windowed.columns if c not in BASE_WINDOWED_COLUMNS]
+    return windowed[ordered]
 
 
 def add_training_targets(windowed: pd.DataFrame, mode: LabelMode) -> pd.DataFrame:
