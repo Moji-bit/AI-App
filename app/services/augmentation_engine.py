@@ -168,9 +168,9 @@ class AugmentationEngine:
                 vals = pd.to_numeric(out[col], errors="coerce").fillna(0)
                 flip_prob = 0.01 + self.config.augmentation_strength * 0.02
                 flips = self.rng.random(n) < flip_prob
-                vals = vals.astype(int).to_numpy(copy=True)
-                vals[flips] = 1 - vals[flips]
-                out[col] = vals
+                vals_arr = np.array(vals.astype(int).to_numpy(), dtype=int, copy=True)
+                vals_arr[flips] = 1 - vals_arr[flips]
+                out[col] = vals_arr
 
         if "timestamp_s" in out.columns:
             sample_jitter = self.rng.choice([0, 0, 0, 1, -1], size=n)
