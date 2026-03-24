@@ -120,7 +120,7 @@ class AugmentationEngine:
         for col in CONTINUOUS_COLUMNS:
             if col not in out.columns:
                 continue
-            series = pd.to_numeric(out[col], errors="coerce").interpolate().fillna(method="bfill").fillna(method="ffill")
+            series = pd.to_numeric(out[col], errors="coerce").interpolate().bfill().ffill()
             baseline = series.to_numpy(dtype=float)
             std = np.std(baseline) if np.std(baseline) > 0 else max(np.mean(np.abs(baseline)), 1.0)
 
@@ -324,7 +324,7 @@ def generate_augmented_dataset(
             if target_count <= 0:
                 continue
 
-            source_group = class_groups.get_group(event_class) if event_class in class_groups.groups else meta
+            source_group = class_groups.get_group((event_class,)) if event_class in class_groups.groups else meta
             source_row = source_group.sample(1, random_state=int(engine.rng.integers(0, 999999))).iloc[0]
             sid = str(source_row["scenario_id"])
 
