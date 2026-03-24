@@ -624,7 +624,10 @@ def register_handlers(input, output, session) -> None:
         model = _get()["trained_model"]
         if model is None:
             return px.bar(title="Keine Feature Importance verfügbar")
-        fi = feature_importance_df(model).head(20)
+        fi = feature_importance_df(model).head(20).copy()
+        if fi.empty:
+            return px.bar(pd.DataFrame({"feature": ["none"], "importance": [0.0]}), x="feature", y="importance", title="Feature Importance")
+        fi["importance"] = pd.to_numeric(fi["importance"], errors="coerce").replace([float("inf"), float("-inf")], 0).fillna(0)
         return px.bar(fi, x="feature", y="importance", title="Feature Importance")
 
     @output

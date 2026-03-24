@@ -123,8 +123,8 @@ def add_training_targets(windowed: pd.DataFrame, mode: LabelMode) -> pd.DataFram
 
 def train_val_test_split(windowed: pd.DataFrame, config: DatasetBuildConfig) -> dict[str, pd.DataFrame]:
     rng = np.random.default_rng(config.random_seed)
-    scenario_ids = windowed["scenario_id"].dropna().unique().astype(str)
-    shuffled = scenario_ids.copy()
+    scenario_ids = windowed["scenario_id"].dropna().astype(str).unique().tolist()
+    shuffled = np.array(scenario_ids, dtype=object)
     rng.shuffle(shuffled)
 
     n = len(shuffled)

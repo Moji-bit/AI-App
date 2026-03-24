@@ -150,7 +150,8 @@ def train_model(
     feature_importance = {}
     for c in feature_cols:
         corr = pd.to_numeric(train_df[c], errors="coerce").corr(target_tte_series)
-        feature_importance[c] = float(abs(corr)) if not np.isnan(corr) else float(rng.random() * 0.2)
+        score = float(abs(corr)) if not np.isnan(corr) else float(rng.random() * 0.2)
+        feature_importance[c] = score if np.isfinite(score) else 0.0
 
     if not feature_importance:
         feature_importance = {"fallback_feature": 1.0}
